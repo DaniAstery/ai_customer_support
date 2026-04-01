@@ -7,6 +7,36 @@ load_dotenv()
 API_KEY = os.getenv("TWELVE_API_KEY")
 
 app = Flask(__name__)
+# API endpoint for website chat
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.json
+    user_input = data.get("message", "")
+
+    # 🔥 TOOL FIRST
+    tool_result = binance_tool(user_input)
+    if tool_result:
+        messages.append({"role": "system", "content": tool_result})
+        reply = tool_result
+    else:
+        faq_result = faq_tool(user_input)
+        if faq_result:
+            messages.append({"role": "system", "content": faq_result})
+            reply = faq_result
+        else:
+            # Default response if nothing matches
+            reply = "I will connect you to customer support."
+
+        messages.append({"role": "user", "content": user_input})
+
+    return jsonify({"reply": reply})
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+
+
 
 # Conversation memory
 messages = []
@@ -67,29 +97,3 @@ def faq_tool(user_input):
             return faq["answer"]
     return None
 
-# API endpoint for website chat
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.json
-    user_input = data.get("message", "")
-
-    # 🔥 TOOL FIRST
-    tool_result = binance_tool(user_input)
-    if tool_result:
-        messages.append({"role": "system", "content": tool_result})
-        reply = tool_result
-    else:
-        faq_result = faq_tool(user_input)
-        if faq_result:
-            messages.append({"role": "system", "content": faq_result})
-            reply = faq_result
-        else:
-            # Default response if nothing matches
-            reply = "I will connect you to customer support."
-
-        messages.append({"role": "user", "content": user_input})
-
-    return jsonify({"reply": reply})
-
-if __name__ == "__main__":
-    app.run(debug=True)
