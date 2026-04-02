@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import CORS,Flask
 from dotenv import load_dotenv
 import os
 import requests
@@ -7,6 +7,7 @@ load_dotenv()
 API_KEY = os.getenv("TWELVE_API_KEY")
 
 app = Flask(__name__)
+CORS(app)
 
 # 🔥 Global memory
 messages = []
