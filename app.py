@@ -1,4 +1,4 @@
-from flask import CORS,Flask
+from flask import CORS,Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -73,7 +73,7 @@ def home():
 # ✅ Chat route
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.json
+    data = requests.json
     user_input = data.get("message", "")
 
     tool_result = binance_tool(user_input)
