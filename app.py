@@ -34,7 +34,8 @@ def binance_tool(user_input):
         if coin in user_input and "price" in user_input:
             try:
                 url = f"https://api.twelvedata.com/price?symbol={coins[coin]}&apikey={API_KEY}"
-                data = requests.get(url).json()
+                response = requests.get(url)
+                data = response.json()
                 price = float(data["price"])
                 return f"{coin.upper()} price: ${price}"
             except:
