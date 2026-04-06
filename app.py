@@ -36,28 +36,18 @@ def binance_tool(user_input):
                 url = f"https://api.twelvedata.com/price?symbol={coins[coin]}&apikey={API_KEY}"
                 response = requests.get(url)
                 data = response.json()
+
+                if "price" not in data:
+                    return "API error or invalid API key"
+
                 price = float(data["price"])
                 return f"{coin.upper()} price: ${price}"
-            except:
-                return "Error fetching price"
 
-    if "price" in user_input and not any(c in user_input for c in coins):
-        state["awaiting_coin"] = True
-        return "Which coin? (btc, eth, sol)"
-
-    if state.get("awaiting_coin"):
-        if user_input in coins:
-            state["awaiting_coin"] = False
-            try:
-                url = f"https://api.twelvedata.com/price?symbol={coins[user_input]}&apikey={API_KEY}"
-                data = requests.get(url).json()
-                price = float(data["price"])
-                return f"{user_input.upper()} price: ${price}"
-            except:
+            except Exception as e:
+                print("ERROR:", e)
                 return "Error fetching price"
 
     return None
-
 # 🔥 FAQ tool
 def faq_tool(user_input):
     user_input = user_input.lower()
@@ -71,24 +61,27 @@ def faq_tool(user_input):
 def home():
     return "API is running"
 
-# ✅ Chat route
-@app.route("/chat", methods=["POST"])
+
+@app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    data = requests.json
-    user_input = data.get("message", "")
+    try:
+        data = request.json
+        user_input = data.get("message", "")
 
-    tool_result = binance_tool(user_input)
+        tool_result = binance_tool(user_input)
 
-    if tool_result:
-        reply = tool_result
-    else:
+        if tool_result:
+            return jsonify({"reply": tool_result})
+
         faq_result = faq_tool(user_input)
         if faq_result:
-            reply = faq_result
-        else:
-            reply = "I will connect you to customer support."
+            return jsonify({"reply": faq_result})
 
-    return jsonify({"reply": reply})
+        return jsonify({"reply": "I will connect you to customer support."})
+
+    except Exception as e:
+        print("🔥 ERROR:", e)
+        return jsonify({"reply": "Server error"}), 500
 
 # 🔥 Only for local
 if __name__ == "__main__":
