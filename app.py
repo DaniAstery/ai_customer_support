@@ -4,15 +4,14 @@ from dotenv import load_dotenv
 import os
 import requests
 
+# Load environment variables
 load_dotenv()
 API_KEY = os.getenv("TWELVE_API_KEY")
 
 app = Flask(__name__)
-CORS(app)
 
-# 🔥 Global memory
-messages = []
-state = {}
+# ✅ Proper CORS configuration for production
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # 🔥 FAQ list
 faqs = [
@@ -25,29 +24,29 @@ faqs = [
     {"question": "international shipping", "answer": "Yes, we offer international shipping."}
 ]
 
-# 🔥 Binance tool
-def binance_tool(user_input):
-    user_input = user_input.lower()
-    coins = {"btc": "BTC/USD", "eth": "ETH/USD", "sol": "SOL/USD"}
+# 🔥 Binance tool (Commented out as requested)
+# def binance_tool(user_input):
+#     user_input = user_input.lower()
+#     coins = {"btc": "BTC/USD", "eth": "ETH/USD", "sol": "SOL/USD"}
+#
+#     for coin in coins:
+#         if coin in user_input and "price" in user_input:
+#             try:
+#                 url = f"https://api.twelvedata.com/price?symbol={coins[coin]}&apikey={API_KEY}"
+#                 response = requests.get(url)
+#                 data = response.json()
+#
+#                 if "price" not in data:
+#                     return "API error or invalid API key"
+#
+#                 price = float(data["price"])
+#                 return f"{coin.upper()} price: ${price}"
+#
+#             except Exception as e:
+#                 print("ERROR:", e)
+#                 return "Error fetching price"
+#     return None
 
-    for coin in coins:
-        if coin in user_input and "price" in user_input:
-            try:
-                url = f"https://api.twelvedata.com/price?symbol={coins[coin]}&apikey={API_KEY}"
-                response = requests.get(url)
-                data = response.json()
-
-                if "price" not in data:
-                    return "API error or invalid API key"
-
-                price = float(data["price"])
-                return f"{coin.upper()} price: ${price}"
-
-            except Exception as e:
-                print("ERROR:", e)
-                return "Error fetching price"
-
-    return None
 # 🔥 FAQ tool
 def faq_tool(user_input):
     user_input = user_input.lower()
@@ -56,33 +55,41 @@ def faq_tool(user_input):
             return faq["answer"]
     return None
 
-# ✅ Health route (IMPORTANT)
-@app.route("/")
-def home():
-    return "API is running"
+# ✅ Combined Route to prevent 405 Errors
+# This handles the landing page (GET) and the chat logic (POST) in one place.
+@app.route("/", methods=["GET", "POST", "OPTIONS"])
+def handle_request():
+    # Handle CORS Preflight
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
 
+    # Handle Health Check (Standard browser visit)
+    if request.method == "GET":
+        return "Chatbot API is active. Send a POST request to interact."
 
-@app.route("/chat", methods=["POST", "OPTIONS"])
-def chat():
+    # Handle Chat Logic
     try:
-        data = request.json
-        user_input = data.get("message", "")
+        data = request.get_json()
+        if not data:
+            return jsonify({"reply": "No data provided"}), 400
 
-        tool_result = binance_tool(user_input)
+        user_input = data.get("message", "").lower()
 
-        if tool_result:
-            return jsonify({"reply": tool_result})
-
+        # Check FAQ tool
         faq_result = faq_tool(user_input)
         if faq_result:
             return jsonify({"reply": faq_result})
 
+        # Default fallback
         return jsonify({"reply": "I will connect you to customer support."})
 
     except Exception as e:
-        print("🔥 ERROR:", e)
-        return jsonify({"reply": "Server error"}), 500
+        print(f"DEBUG ERROR: {e}")
+        return jsonify({"reply": "Server error. Please try again later."}), 500
 
-# 🔥 Only for local
+# 🔥 Production configuration for Render
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Render provides a PORT environment variable. If not found, it defaults to 5000.
+    port = int(os.environ.get("PORT", 5000))
+    # host="0.0.0.0" is required for the service to be accessible externally.
+    app.run(host="0.0.0.0", port=port)
