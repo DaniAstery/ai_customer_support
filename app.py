@@ -57,7 +57,7 @@ def faq_tool(user_input):
 
 # ✅ Combined Route to prevent 405 Errors
 # This handles the landing page (GET) and the chat logic (POST) in one place.
-@app.route("/", methods=["GET", "POST", "OPTIONS"])
+@app.route("/chat", methods=["GET", "POST", "OPTIONS"])
 def handle_request():
     # Handle CORS Preflight
     if request.method == "OPTIONS":
