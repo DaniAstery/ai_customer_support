@@ -59,51 +59,44 @@ def faq_tool(user_input):
 
 def ai_response(user_input):
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key={GEMINI_API_KEY}"
+        headers = {"Content-Type": "application/json"}
 
-        headers = {
-            "Content-Type": "application/json"
-        }
-
-        data = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": f"""
+        prompt_text = f"""
 You are a customer support assistant for Asterya store.
 
-Business Information:
+Business Info:
 - We sell watches and jewelry
-- Price range: $50 - $200
+- Price range: $50-$200
 - Location: Addis Ababa
 - Shipping: Worldwide
 - Return policy: 30 days
 - Contact: support@example.com
 
-Instructions:
-- Answer like a professional support agent
-- Be clear and helpful
-- If unsure, say you will confirm you can reach out to the customer support team and get back to them via email daniel.mamo@asteryagemstone.com.
+Answer user questions professionally and helpfully.
 
-User question:
-{user_input}
+User question: {user_input}
 """
-                        }
-                    ]
-                }
-            ]
+
+        data = {
+            "prompt": prompt_text,
+            "temperature": 0.5,
+            "max_output_tokens": 300
         }
 
         response = requests.post(url, headers=headers, json=data)
         result = response.json()
 
-        return result["candidates"][0]["content"]["parts"][0]["text"]
+        # Debug: see full API response
+        print(result)
+
+        # ✅ Extract text safely
+        text = result["output"][0]["content"][0]["text"]
+        return text
 
     except Exception as e:
         print("AI ERROR:", e)
         return "AI is currently unavailable."
-
 
 
 
