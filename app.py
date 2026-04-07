@@ -7,6 +7,7 @@ import requests
 # Load environment variables
 load_dotenv()
 API_KEY = os.getenv("TWELVE_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 app = Flask(__name__)
 
@@ -48,12 +49,63 @@ faqs = [
 #     return None
 
 # 🔥 FAQ tool
+
 def faq_tool(user_input):
     user_input = user_input.lower()
     for faq in faqs:
         if faq["question"] in user_input:
             return faq["answer"]
     return None
+
+def ai_response(user_input):
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": f"""
+You are a customer support assistant for Asterya store.
+
+Business Information:
+- We sell watches and jewelry
+- Price range: $50 - $200
+- Location: Addis Ababa
+- Shipping: Worldwide
+- Return policy: 30 days
+- Contact: support@example.com
+
+Instructions:
+- Answer like a professional support agent
+- Be clear and helpful
+- If unsure, say you will confirm you can reach out to the customer support team and get back to them via email daniel.mamo@asteryagemstone.com.
+
+User question:
+{user_input}
+"""
+                        }
+                    ]
+                }
+            ]
+        }
+
+        response = requests.post(url, headers=headers, json=data)
+        result = response.json()
+
+        return result["candidates"][0]["content"]["parts"][0]["text"]
+
+    except Exception as e:
+        print("AI ERROR:", e)
+        return "AI is currently unavailable."
+
+
+
 
 # ✅ Combined Route to prevent 405 Errors
 # This handles the landing page (GET) and the chat logic (POST) in one place.
@@ -79,6 +131,12 @@ def handle_request():
         faq_result = faq_tool(user_input)
         if faq_result:
             return jsonify({"reply": faq_result})
+        
+        # Check AI tool    
+        
+        ai_reply = ai_response(user_input)
+        if ai_reply:
+            return jsonify({"reply": ai_reply})    
 
         # Default fallback
         return jsonify({"reply": "I will connect you to customer support."})
