@@ -6,8 +6,10 @@ import requests
 
 # Load environment variables
 load_dotenv()
-API_KEY = os.getenv("TWELVE_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+VERIFY_TOKEN = os.getenv("verifytoken")
+phone_id = os.getenv("whatsapp_phone_id")
+##API_KEY = os.getenv("TWELVE_API_KEY")
+##GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 app = Flask(__name__)
 
@@ -51,19 +53,18 @@ faqs = [
 # 🔥 FAQ tool
 
 def faq_tool(user_input):
-    user_input = user_input.lower()
-    for faq in faqs:
-        if faq["question"] in user_input:
-            return faq["answer"]
-    return None
+        user_input = user_input.lower()
+        for faq in faqs:
+            if faq["question"] in user_input:
+                return faq["answer"]
+        return None
 
 def ai_response(user_input):
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key={GEMINI_API_KEY}"
-        headers = {"Content-Type": "application/json"}
+        url = "http://localhost:11434/api/generate"
 
-        prompt_text = f"""
-You are a customer support assistant for Asterya store.
+        prompt = f"""
+You are a professional customer support assistant for Asterya store.
 
 Business Info:
 - We sell watches and jewelry
@@ -73,34 +74,80 @@ Business Info:
 - Return policy: 30 days
 - Contact: support@example.com
 
-Answer user questions professionally and helpfully.
+Answer clearly and professionally.
 
-User question: {user_input}
+User question:
+{user_input}
 """
 
-        data = {
-            "prompt": prompt_text,
-            "temperature": 0.5,
-            "max_output_tokens": 300
-        }
+        response = requests.post(url, json={
+            "model": "tinyllama",
+            "prompt": prompt,
+            "stream": False
+        })
 
-        response = requests.post(url, headers=headers, json=data)
-        result = response.json()
+        data = response.json()
 
-        # Debug: see full API response
-        print(result)
-
-        # ✅ Extract text safely
-        text = result["output"][0]["content"][0]["text"]
-        return text
+        return data.get("response", "AI response missing")
 
     except Exception as e:
-        print("AI ERROR:", e)
-        return "AI is currently unavailable."
+        print("OLLAMA ERROR:", e)
+        return "Local AI unavailable."
 
 
 
-# ✅ Combined Route to prevent 405 Errors
+
+@app.route("/webhook", methods=["GET", "POST"])
+def webhook():
+
+    # ✅ Verification (Meta setup)
+    if request.method == "GET":
+        if request.args.get("hub.verify_token") == VERIFY_TOKEN:
+            return request.args.get("hub.challenge")
+        return "Error"
+
+    # ✅ Incoming message
+    if request.method == "POST":
+        data = request.get_json()
+        print("INCOMING:", data)
+
+        try:
+            message = data["entry"][0]["changes"][0]["value"]["messages"][0]["text"]["body"]
+            sender = data["entry"][0]["changes"][0]["value"]["messages"][0]["from"]
+
+            # 🔥 SAME CHATBOT LOGIC
+            reply = faq_tool(message) or ai_response(message)
+
+            send_whatsapp_message(sender, reply)
+
+        except Exception as e:
+            print("ERROR:", e)
+
+        return "ok"
+    
+
+
+
+def send_whatsapp_message(to, text):
+    url = f"https://graph.facebook.com/v18.0/{os.getenv('whatsapp_phone_id')}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {os.getenv('ACCESS_TOKEN')}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "text": {"body": text}
+    }
+
+    requests.post(url, headers=headers, json=data)
+
+
+
+
+
 # This handles the landing page (GET) and the chat logic (POST) in one place.
 @app.route("/chat", methods=["GET", "POST", "OPTIONS"])
 def handle_request():
@@ -114,7 +161,7 @@ def handle_request():
 
     # Handle Chat Logic
     try:
-        data = request.get_json()
+        data = request.get_json()   
         if not data:
             return jsonify({"reply": "No data provided"}), 400
 
