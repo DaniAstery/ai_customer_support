@@ -8,9 +8,9 @@ import requests
 load_dotenv()
 VERIFY_TOKEN = os.getenv("verifytoken")
 phone_id = os.getenv("whatsapp_phone_id")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN  ")  
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")  
 ##API_KEY = os.getenv("TWELVE_API_KEY")
-##GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 app = Flask(__name__)
 
@@ -60,11 +60,22 @@ def faq_tool(user_input):
                 return faq["answer"]
         return None
 
+
+
 def ai_response(user_input):
     try:
-        url = "http://localhost:11434/api/generate"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
 
-        prompt = f"""
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": f"""
 You are a professional customer support assistant for Asterya store.
 
 Business Info:
@@ -77,25 +88,25 @@ Business Info:
 
 Answer clearly and professionally only what is asked do not explain further.
 
-User question:
-{user_input}
+User: {user_input}
 """
+                        }
+                    ]
+                }
+            ]
+        }
 
-        response = requests.post(url, json={
-            "model": "tinyllama",
-            "prompt": prompt,
-            "stream": False
-        })
+        response = requests.post(url, headers=headers, json=data)
+        result = response.json()
 
-        data = response.json()
+        print("FULL AI RESPONSE:", result)
 
-        return data.get("response", "AI response missing")
+        # ✅ Correct parsing
+        return result["candidates"][0]["content"]["parts"][0]["text"]
 
     except Exception as e:
-        print("OLLAMA ERROR:", e)
-        return "Local AI unavailable."
-
-
+        print("AI ERROR:", e)
+        return "AI is currently unavailable."
 
 
 @app.route("/webhook", methods=["GET", "POST"])
