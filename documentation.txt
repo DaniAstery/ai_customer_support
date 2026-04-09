@@ -1,6 +1,6 @@
 cd venv 
 source bin/activate 
 
-ngrok http 80
+ngrok http 5000
 
 ollama run tinyllama
