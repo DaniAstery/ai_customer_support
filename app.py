@@ -8,6 +8,7 @@ import requests
 load_dotenv()
 VERIFY_TOKEN = os.getenv("verifytoken")
 phone_id = os.getenv("whatsapp_phone_id")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN  ")  
 ##API_KEY = os.getenv("TWELVE_API_KEY")
 ##GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -98,33 +99,30 @@ User question:
 
 
 @app.route("/webhook", methods=["GET", "POST"])
+
 def webhook():
 
-    # ✅ Verification (Meta setup)
-    if request.method == "GET":
-        if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-            return request.args.get("hub.challenge")
-        return "Error"
+   if request.method == "POST":
+    data = request.get_json()
 
-    # ✅ Incoming message
-    if request.method == "POST":
-        data = request.get_json()
-        print("INCOMING:", data)
+    print("🔥 WEBHOOK HIT!")
+    print("FULL DATA:", data)
 
-        try:
-            message = data["entry"][0]["changes"][0]["value"]["messages"][0]["text"]["body"]
-            sender = data["entry"][0]["changes"][0]["value"]["messages"][0]["from"]
+    try:
+        value = data["entry"][0]["changes"][0]["value"]
 
-            # 🔥 SAME CHATBOT LOGIC
-            reply = faq_tool(message) or ai_response(message)
-
+        if "messages" in value:
+            message = value["messages"][0]["text"]["body"]
+            sender = value["messages"][0]["from"]
+            reply=faq_tool(message)or ai_response(message) or "I will connect you to customer support."
             send_whatsapp_message(sender, reply)
+            print("USER:", message)
+            print("SENDER:", sender)
 
-        except Exception as e:
-            print("ERROR:", e)
+    except Exception as e:
+        print("ERROR:", e)
 
-        return "ok"
-    
+    return "ok"
 
 
 
@@ -139,10 +137,19 @@ def send_whatsapp_message(to, text):
     data = {
         "messaging_product": "whatsapp",
         "to": to,
-        "text": {"body": text}
+        "type": "text",
+        "text": {
+            "body": text
+        }
     }
 
-    requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data)
+
+    # 🔥 Debug logs (VERY IMPORTANT)
+    print("STATUS CODE:", response.status_code)
+    print("WHATSAPP RESPONSE:", response.json())
+
+    return response.json()
 
 
 
