@@ -1,0 +1,6 @@
+cd venv 
+source bin/activate 
+
+ngrok http 80
+
+ollama run tinyllama

@@ -73,9 +73,9 @@ Business Info:
 - Location: Addis Ababa
 - Shipping: Worldwide
 - Return policy: 30 days
-- Contact: support@example.com
+- Contact:daniel.mamo@asteryagemstone.com
 
-Answer clearly and professionally.
+Answer clearly and professionally only what is asked do not explain further.
 
 User question:
 {user_input}
